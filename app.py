@@ -2,120 +2,126 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load trained model
-model = joblib.load("traffic_classification_model.pkl")
-
-# Page config
+# =========================
+# PAGE CONFIG
+# =========================
 st.set_page_config(
     page_title="Traffic Condition Prediction",
+    page_icon="🚦",
     layout="centered"
 )
 
-# -----------------------------
-# HEADER
-# -----------------------------
-st.markdown(
-    """
-    <h1 style='text-align: center;'>🚦 Traffic Condition Prediction</h1>
-    <p style='text-align: center; color: gray;'>
-    Predict real-time traffic conditions using key traffic indicators
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+st.title("🚦 Smart Traffic Condition Prediction System")
+st.caption("End-to-end supervised ML application with multi-model comparison")
 
-st.divider()
+# =========================
+# LOAD MODEL
+# =========================
+model = joblib.load("traffic_model.pkl")
 
-# -----------------------------
-# INPUT SECTION
-# -----------------------------
-st.subheader("🔧 Traffic Inputs")
-
-vehicle_count = st.slider("🚗 Vehicle Count", 0, 500, 120)
-traffic_speed = st.slider("🚘 Average Speed (km/h)", 0, 120, 40)
-road_occupancy = st.slider("🛣️ Road Occupancy (%)", 0, 100, 60)
+# =========================
+# USER INPUTS
+# =========================
+st.header("📥 Enter Traffic Details")
 
 col1, col2 = st.columns(2)
+
 with col1:
-    traffic_light = st.selectbox("🚦 Traffic Light State", ["Red", "Yellow", "Green"])
+    traffic_light = st.selectbox(
+        "Traffic Light State",
+        ["Red", "Yellow", "Green"]
+    )
+
+    weather = st.selectbox(
+        "Weather Condition",
+        ["Clear", "Rain", "Fog", "Snow"]
+    )
+
+    accident = st.selectbox(
+        "Accident Report",
+        ["No", "Yes"]
+    )
+
+    hour = st.slider(
+        "Time of Day (Hour)",
+        min_value=0,
+        max_value=23,
+        value=12
+    )
+
 with col2:
-    weather = st.selectbox("🌦️ Weather Condition", ["Clear", "Rainy", "Foggy"])
+    vehicle_count = st.number_input(
+        "Vehicle Count",
+        min_value=0,
+        max_value=1000,
+        value=120
+    )
 
-accident = st.selectbox("🚑 Accident Report", ["No", "Yes"])
-hour = st.slider("⏰ Time of Day (Hour)", 0, 23, 18)
+    speed = st.number_input(
+        "Traffic Speed (km/h)",
+        min_value=0.0,
+        max_value=150.0,
+        value=40.0
+    )
 
-st.divider()
+    road_occ = st.slider(
+        "Road Occupancy (%)",
+        min_value=0.0,
+        max_value=100.0,
+        value=50.0
+    )
 
-# -----------------------------
-# INTERNAL DEFAULTS (HIDDEN)
-# -----------------------------
-latitude = 12.97
-longitude = 77.59
-sentiment = 0.0
-ride_demand = 50
-parking = 30
-emission = 120.0
-energy = 8.0
-day = 15
-month = 6
-weekday = 2
-
-# -----------------------------
-# ENCODING
-# -----------------------------
-traffic_light_map = {"Red": 0, "Yellow": 1, "Green": 2}
-weather_map = {"Clear": 0, "Rainy": 1, "Foggy": 2}
-accident_map = {"No": 0, "Yes": 1}
-
-# -----------------------------
-# INPUT DATAFRAME (MODEL ORDER)
-# -----------------------------
-input_df = pd.DataFrame([[
-    latitude,
-    longitude,
-    vehicle_count,
-    traffic_speed,
-    road_occupancy,
-    traffic_light_map[traffic_light],
-    weather_map[weather],
-    accident_map[accident],
-    sentiment,
-    ride_demand,
-    parking,
-    emission,
-    energy,
-    hour,
-    day,
-    month,
-    weekday
-]])
-
-# -----------------------------
-# LABEL MAPPING
-# -----------------------------
-traffic_condition_map = {
-    0: "Low Traffic",
-    1: "Moderate Traffic",
-    2: "High Traffic",
-    3: "Severe Congestion"
+# =========================
+# DEFAULT VALUES (HIDDEN)
+# =========================
+defaults = {
+    "Latitude": 13.0827,
+    "Longitude": 80.2707,
+    "Sentiment_Score": 0.1,
+    "Day": 15,
+    "Month": 6,
+    "Weekday": 2
 }
 
-# -----------------------------
+# =========================
 # PREDICTION
-# -----------------------------
-if st.button("🔍 Predict Traffic Condition", use_container_width=True):
-    pred_class = model.predict(input_df)[0]
-    prediction = traffic_condition_map.get(pred_class, "Unknown")
+# =========================
+if st.button("🔍 Predict Traffic Condition"):
+    input_df = pd.DataFrame([{
+        'Traffic_Light_State': traffic_light,
+        'Weather_Condition': weather,
+        'Accident_Report': accident,
+        'Latitude': defaults["Latitude"],
+        'Longitude': defaults["Longitude"],
+        'Vehicle_Count': vehicle_count,
+        'Traffic_Speed_kmh': speed,
+        'Road_Occupancy_%': road_occ,
+        'Sentiment_Score': defaults["Sentiment_Score"],
+        'Hour': hour,
+        'Day': defaults["Day"],
+        'Month': defaults["Month"],
+        'Weekday': defaults["Weekday"]
+    }])
 
-    st.subheader("📊 Prediction Result")
+    # Prediction
+    prediction = model.predict(input_df)[0]
 
-    if prediction == "Low Traffic":
-        st.success("🟢 Low Traffic — Smooth flow of vehicles")
-    elif prediction == "Moderate Traffic":
-        st.info("🟡 Moderate Traffic — Slight delays expected")
-    elif prediction == "High Traffic":
-        st.warning("🟠 High Traffic — Expect congestion")
-    else:
-        st.error("🔴 Severe Congestion — Avoid this route if possible")
+    st.success(f"🚦 Predicted Traffic Condition: **{prediction}**")
 
-    st.caption("Prediction generated using a supervised machine learning classification model.")
+    # Confidence (if supported)
+    if hasattr(model.named_steps['model'], "predict_proba"):
+        proba = model.predict_proba(input_df)[0]
+        confidence = max(proba) * 100
+        st.metric("Prediction Confidence", f"{confidence:.2f}%")
+
+    st.info(
+        "This system uses the best-performing supervised ML model "
+        "selected after comparing Logistic Regression, KNN, Naive Bayes, "
+        "Decision Tree, Random Forest, SVM, and Gradient Boosting."
+    )
+
+# =========================
+# FOOTER
+# =========================
+st.markdown("---")
+st.caption("Built with Scikit-learn Pipelines & Streamlit | Supervised ML Project")
