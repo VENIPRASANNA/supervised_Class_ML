@@ -91,34 +91,32 @@ if st.button("🔍 Predict Traffic Condition"):
         'Traffic_Light_State': traffic_light,
         'Weather_Condition': weather,
         'Accident_Report': accident,
-        'Latitude': defaults["Latitude"],
-        'Longitude': defaults["Longitude"],
+
+        'Latitude': 13.0827,
+        'Longitude': 80.2707,
         'Vehicle_Count': vehicle_count,
         'Traffic_Speed_kmh': speed,
         'Road_Occupancy_%': road_occ,
-        'Sentiment_Score': defaults["Sentiment_Score"],
+        'Sentiment_Score': 0.1,
+
         'Hour': hour,
-        'Day': defaults["Day"],
-        'Month': defaults["Month"],
-        'Weekday': defaults["Weekday"]
+        'Day': 15,
+        'Month': 6,
+        'Weekday': 2
     }])
 
-    # Prediction
+    # 🔒 CRITICAL LINE — DO NOT REMOVE
+    input_df = input_df[model.feature_names_in_]
+
     prediction = model.predict(input_df)[0]
 
     st.success(f"🚦 Predicted Traffic Condition: **{prediction}**")
 
-    # Confidence (if supported)
+    # Confidence score (if supported)
     if hasattr(model.named_steps['model'], "predict_proba"):
         proba = model.predict_proba(input_df)[0]
         confidence = max(proba) * 100
         st.metric("Prediction Confidence", f"{confidence:.2f}%")
-
-    st.info(
-        "This system uses the best-performing supervised ML model "
-        "selected after comparing Logistic Regression, KNN, Naive Bayes, "
-        "Decision Tree, Random Forest, SVM, and Gradient Boosting."
-    )
 
 # =========================
 # FOOTER
