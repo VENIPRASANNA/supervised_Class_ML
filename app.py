@@ -12,12 +12,16 @@ st.set_page_config(
 )
 
 st.title("🚦 Smart Traffic Condition Prediction System")
-st.caption("End-to-end supervised ML application with multi-model comparison")
+st.caption("End-to-end supervised ML application using Scikit-learn Pipeline")
 
 # =========================
-# LOAD MODEL
+# LOAD TRAINED PIPELINE
 # =========================
-model = joblib.load("traffic_model.pkl")
+@st.cache_resource
+def load_model():
+    return joblib.load("traffic_model.pkl")
+
+model = load_model()
 
 # =========================
 # USER INPUTS
@@ -72,54 +76,54 @@ with col2:
     )
 
 # =========================
-# DEFAULT VALUES (HIDDEN)
+# DEFAULT / STATIC VALUES
 # =========================
-defaults = {
-    "Latitude": 13.0827,
-    "Longitude": 80.2707,
-    "Sentiment_Score": 0.1,
-    "Day": 15,
-    "Month": 6,
-    "Weekday": 2
-}
+LATITUDE = 13.0827
+LONGITUDE = 80.2707
+SENTIMENT = 0.1
+DAY = 15
+MONTH = 6
+WEEKDAY = 2
 
 # =========================
 # PREDICTION
 # =========================
 if st.button("🔍 Predict Traffic Condition"):
     input_df = pd.DataFrame([{
-        'Traffic_Light_State': traffic_light,
-        'Weather_Condition': weather,
-        'Accident_Report': accident,
+        "Traffic_Light_State": traffic_light,
+        "Weather_Condition": weather,
+        "Accident_Report": accident,
 
-        'Latitude': 13.0827,
-        'Longitude': 80.2707,
-        'Vehicle_Count': vehicle_count,
-        'Traffic_Speed_kmh': speed,
-        'Road_Occupancy_%': road_occ,
-        'Sentiment_Score': 0.1,
+        "Latitude": float(LATITUDE),
+        "Longitude": float(LONGITUDE),
+        "Vehicle_Count": int(vehicle_count),
+        "Traffic_Speed_kmh": float(speed),
+        "Road_Occupancy_%": float(road_occ),
+        "Sentiment_Score": float(SENTIMENT),
 
-        'Hour': hour,
-        'Day': 15,
-        'Month': 6,
-        'Weekday': 2
+        "Hour": int(hour),
+        "Day": int(DAY),
+        "Month": int(MONTH),
+        "Weekday": int(WEEKDAY)
     }])
 
-    # 🔒 CRITICAL LINE — DO NOT REMOVE
-    input_df = input_df[model.feature_names_in_]
+    try:
+        prediction = model.predict(input_df)[0]
+        st.success(f"🚦 Predicted Traffic Condition: **{prediction}**")
 
-    prediction = model.predict(input_df)[0]
+        # Confidence (if classifier supports probability)
+        final_model = model.named_steps.get("model", None)
+        if final_model and hasattr(final_model, "predict_proba"):
+            proba = model.predict_proba(input_df)[0]
+            confidence = max(proba) * 100
+            st.metric("Prediction Confidence", f"{confidence:.2f}%")
 
-    st.success(f"🚦 Predicted Traffic Condition: **{prediction}**")
-
-    # Confidence score (if supported)
-    if hasattr(model.named_steps['model'], "predict_proba"):
-        proba = model.predict_proba(input_df)[0]
-        confidence = max(proba) * 100
-        st.metric("Prediction Confidence", f"{confidence:.2f}%")
+    except Exception as e:
+        st.error("⚠️ Prediction failed. Check model & input consistency.")
+        st.code(str(e))
 
 # =========================
 # FOOTER
 # =========================
 st.markdown("---")
-st.caption("Built with Scikit-learn Pipelines & Streamlit | Supervised ML Project")
+st.caption("Built with Streamlit & Scikit-learn | Supervised ML Academic Project")
